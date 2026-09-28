@@ -1,0 +1,25 @@
+name: elek
+description: Incremental test runner for Dart and Flutter. Skips test files whose inputs already passed and bundles the rest into balanced shards.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/Erengun/elek
+
+environment:
+  sdk: ^3.8.0
+
+topics:
+  - testing
+  - flutter
+  - cli
+  - cache
+
+executables:
+  elek:
+
+dependencies:
+  crypto: ^3.0.0
+  path: ^1.8.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.26.0

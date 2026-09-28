@@ -1,0 +1,47 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # Preserved from previous config
+    avoid_print: false
+    prefer_final_locals: true
+
+    # Safety
+    unawaited_futures: true
+    cancel_subscriptions: true
+    close_sinks: true
+    avoid_catching_errors: true
+    use_rethrow_when_possible: true
+
+    # Type hygiene
+    avoid_dynamic_calls: true
+    unnecessary_nullable_for_final_variable_declarations: true
+
+    # Code quality
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    use_super_parameters: true
+    prefer_single_quotes: true
+    directives_ordering: true
+    sort_constructors_first: true
+    always_declare_return_types: true
+    avoid_redundant_argument_values: true
+
+    # Style
+    prefer_expression_function_bodies: true
+    unnecessary_lambdas: true
+    no_runtimeType_toString: true

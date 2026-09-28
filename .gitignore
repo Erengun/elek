@@ -1,0 +1,9 @@
+.dart_tool/
+build/
+pubspec.lock
+test/.bundle/
+example/test/.bundle/
+*.iml
+.idea/
+.vscode/
+.DS_Store
