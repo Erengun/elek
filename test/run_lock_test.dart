@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:elek/src/run_lock.dart';
 import 'package:path/path.dart' as p;
@@ -18,7 +19,7 @@ import 'package:elek/src/run_lock.dart';
 void main() => print(tryRunLock(r'$path') == null ? 'busy' : 'locked');
 ''');
     return Process.run(Platform.resolvedExecutable, <String>[
-      '--packages=${p.absolute('.dart_tool', 'package_config.json')}',
+      '--packages=${Isolate.packageConfigSync}',
       script.path,
     ]);
   }
