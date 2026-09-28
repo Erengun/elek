@@ -2,7 +2,11 @@
 // avoids a yaml dependency.
 import 'dart:convert';
 
-final RegExp _flutterSdk = RegExp(r'^\s+sdk:\s*flutter\s*$', multiLine: true);
+// Block (`sdk: flutter`), quoted, or flow style (`{sdk: flutter}`).
+final RegExp _flutterSdk = RegExp(
+  r'''\bsdk:\s*(['"]?)flutter\1\s*(?:[},#]|$)''',
+  multiLine: true,
+);
 final RegExp _listItem = RegExp(r'^-\s+(?:path:\s*)?(.+)$');
 final RegExp _fontAsset = RegExp(r'^(?:-\s+)?asset:\s*(.+)$');
 

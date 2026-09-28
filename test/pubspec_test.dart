@@ -10,6 +10,16 @@ void main() {
       );
     });
 
+    test('true for quoted and flow-style SDK dependencies', () {
+      for (final String pubspec in <String>[
+        'dependencies:\n  flutter:\n    sdk: "flutter"\n',
+        "dev_dependencies:\n  flutter_test:\n    sdk: 'flutter'\n",
+        'dependencies:\n  flutter: {sdk: flutter}\n',
+      ]) {
+        expect(usesFlutter(pubspec), isTrue, reason: pubspec);
+      }
+    });
+
     test('false for pure Dart packages and SDK constraints', () {
       expect(
         usesFlutter(

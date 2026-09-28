@@ -15,8 +15,10 @@ final class BundleEntry {
 
 final RegExp _testOn = RegExp(r"^@TestOn\((['\x22])(.+?)\1\)", multiLine: true);
 // `group(file, main)` throws "Groups may not be async" and fails the shard.
+// An arrow body can return a helper's Future too, whatever `main` is typed.
 final RegExp _asyncMain = RegExp(
-  r'\b(?:Future|FutureOr)<[^>]*>\s+main\s*\(|\bmain\s*\([^)]*\)\s*async\b',
+  r'\b(?:Future|FutureOr)<[^>]*>\s+main\s*\(|'
+  r'\bmain\s*\([^)]*\)\s*(?:async\b|=>)',
 );
 final RegExp _otherLibraryAnnotation = RegExp(
   r'^@(Tags|Skip|Timeout|OnPlatform|Retry)\b',
@@ -115,11 +117,14 @@ String renderShard(List<BundleEntry> entries, {required bool flutter}) {
 
 // Goldens resolve against the suite file, which is the shard; wrappers like
 // flame_test's testGolden hide matchesGoldenFile, so rebase for every file.
-// A custom comparator from flutter_test_config is left alone.
+// Only flutter_test's own default: a subclass or another basedir was set up
+// by flutter_test_config and is left alone.
 const String _rebaseGoldensSource = '''
 
 void _rebaseGoldens(GoldenFileComparator root, String file) {
-  if (root is LocalFileComparator) {
+  if (root is LocalFileComparator &&
+      root.runtimeType == LocalFileComparator &&
+      root.basedir.path.endsWith('/.bundle/')) {
     goldenFileComparator = LocalFileComparator(root.basedir.resolve(file));
   }
 }

@@ -85,6 +85,9 @@ void main() {
         'void main() async {}',
         'Future<void> main() => setUp();',
         'FutureOr<void> main() {}',
+        // An arrow body may return a helper's Future that a sync group drops.
+        'void main() => runSuite();',
+        'main() => setUpAndDeclare();',
       ]) {
         expect(bundleEntryFor('a_test.dart', main), isNull, reason: main);
       }
@@ -122,7 +125,10 @@ void main() {
     ], flutter: true);
 
     expect(source, contains("_rebaseGoldens(root, '../core/a_test.dart')"));
-    expect(source, contains('LocalFileComparator'));
+    // Only flutter_test's default comparator: subclasses and a configured
+    // basedir belong to flutter_test_config.
+    expect(source, contains('root.runtimeType == LocalFileComparator'));
+    expect(source, contains("root.basedir.path.endsWith('/.bundle/')"));
   });
 
   test('renderShard uses package:test for pure Dart packages', () {

@@ -24,6 +24,8 @@ void main() {
     write('.bundle/shard_0.dart');
     write('.bundle/notes.txt');
     write('a/.DS_Store');
+    // Written by LocalFileComparator on a mismatch; test output, not input.
+    write('a/goldens/failures/x_masterImage.png');
 
     expect(testDataFiles(testDir.path).toSet(), <String>{json, png});
   });
@@ -39,6 +41,20 @@ void main() {
       final String root = write('flutter_test_config.dart');
 
       expect(nearestTestConfig(testDir.path, 'a/b/c_test.dart'), root);
+    });
+
+    test('keeps walking up to the package root, as Flutter does', () {
+      final String pkg = p.join(testDir.path, 'pkg');
+      final File config = File(p.join(pkg, 'flutter_test_config.dart'))
+        ..createSync(recursive: true);
+      File(p.join(pkg, 'pubspec.yaml')).writeAsStringSync('name: pkg\n');
+      Directory(p.join(pkg, 'test', 'a')).createSync(recursive: true);
+
+      expect(
+        nearestTestConfig(p.join(pkg, 'test'), 'a/b_test.dart'),
+        p.normalize(config.path),
+      );
+      expect(nearestTestConfig(testDir.path, 'a/b_test.dart'), isNull);
     });
 
     test('prefers the closest config', () {

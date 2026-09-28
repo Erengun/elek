@@ -133,8 +133,9 @@ first.
 A test file's fingerprint covers its transitive `import`, `export` and `part`
 closure (both branches of a conditional directive count), including `path:`
 dependencies that live outside the workspace, every non-Dart file
-under `test/` such as fixtures and goldens, its nearest
-`flutter_test_config.dart`, `pubspec.yaml`, the workspace `pubspec.lock`,
+under `test/` such as fixtures and goldens (except the `failures/` images a
+golden mismatch leaves behind), its nearest `flutter_test_config.dart` up to
+the package root, `pubspec.yaml`, the workspace `pubspec.lock`,
 declared assets, `l10n.yaml`, `dart_test.yaml`, the Dart and Flutter versions,
 the locale and the time zone. Hosted and git dependencies aren't walked:
 the lockfile pins them, so a new version changes `pubspec.lock` instead.
@@ -151,7 +152,9 @@ measured duration, or its size when there is no history yet.
 Files in the same shard share an isolate, so a test that leaks global state can
 break its neighbor. When a bundled file fails, or its shard fails to load, Elek
 reruns that file as its own suite and reports and caches that result instead.
-It also prints the files that only passed when run alone.
+It also prints the files that only passed when run alone. If the bundled run
+stopped early (`--fail-fast`, or a crashed test process), a passing rerun
+doesn't turn it green: the tests that never ran keep the run red.
 
 ## Benchmarks
 
@@ -207,14 +210,24 @@ run. They matched every time.
 - Bundling works for Dart VM and Flutter suites. A file that can't share a
   shard runs as its own suite in the same command: a `@TestOn` that isn't a
   plain OS selector, `@Tags`, `@Skip`, `@Timeout`, `@OnPlatform` or `@Retry`,
-  an async `main`, or a nested `flutter_test_config.dart`. Elek doesn't speed
+  a `main` that is async or has an arrow body (`void main() => ...`, which
+  can return a helper's Future), or a nested `flutter_test_config.dart`.
+  Elek doesn't speed
   up browser runs. Those only happen if you pass `-p chrome` after `--`, which
   also turns the cache off.
-- A root `flutter_test_config.dart` wraps each shard once rather than each
-  file. Elek doesn't fingerprint a config file that sits above `test/`.
+- A `flutter_test_config.dart` in `test/` or at the package root wraps each
+  shard once rather than each file.
 - Each bundled Flutter file gets a `LocalFileComparator` rooted at its own
-  directory. If `flutter_test_config.dart` sets a custom comparator, Elek
-  leaves it alone and it resolves paths against the shard.
+  directory, but only when the comparator is still flutter_test's default. A
+  comparator that `flutter_test_config.dart` set up (a subclass, or one with
+  its own base directory) is left alone. If that comparator resolves paths
+  relative to the test file, it resolves them against the shard in
+  `test/.bundle/`, and `--update-goldens` writes the new images there, where
+  Elek deletes them after the run. Use plain `flutter test` to update goldens
+  in that setup.
+- Bundled test names start with the file path (`cart_test.dart adds item`),
+  so a `--name` or `--plain-name` pattern anchored with `^` after `--`
+  matches nothing in a shard. Leave the pattern unanchored.
 - Selection works per file. Changing any file in a test's import closure
   reruns that test, even if the test never uses the changed code.
 - Exit code 79 ("no tests ran") becomes 0 only when the cache skipped files.

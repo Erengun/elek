@@ -147,4 +147,40 @@ void main() {
       <String>['b_test.dart', 'c_test.dart', 'd_test.dart'],
     );
   });
+
+  group('unfinishedSuites', () {
+    String root(int id, int suiteId, int count) => _e(<String, Object?>{
+      'type': 'group',
+      'group': <String, Object?>{
+        'id': id,
+        'suiteID': suiteId,
+        'parentID': null,
+        'name': '',
+        'testCount': count,
+      },
+    });
+
+    test('flags suites that stopped early or never started', () {
+      final Set<String> unfinished = unfinishedSuites(
+        <String>[
+          _suite(0, '$_testDir/.bundle/shard_0.dart'),
+          _start(1, 0, 'loading shard_0.dart', <int>[], 0),
+          _done(1, 'success', 1, hidden: true),
+          root(2, 0, 3),
+          _start(3, 0, 'a_test.dart works', <int>[2], 1),
+          _done(3, 'failure', 2),
+          _suite(4, '$_testDir/b_test.dart'),
+          root(5, 4, 1),
+          _start(6, 4, 'b (setUpAll)', <int>[5], 2),
+          _done(6, 'success', 3, hidden: true),
+          _start(7, 4, 'b works', <int>[5], 3),
+          _done(7, 'success', 4),
+        ],
+        testDir: _testDir,
+        suites: <String>['.bundle/shard_0.dart', 'b_test.dart', 'c_test.dart'],
+      );
+
+      expect(unfinished, <String>{'.bundle/shard_0.dart', 'c_test.dart'});
+    });
+  });
 }

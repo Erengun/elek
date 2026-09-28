@@ -113,6 +113,59 @@ Set<String> failedLoads(Iterable<String> lines, {required String testDir}) {
   return failed;
 }
 
+/// Of [suites] (relative to [testDir]), those that never reported or finished
+/// fewer tests than their root group declared: `--fail-fast` stopped them, or
+/// the test process died partway.
+Set<String> unfinishedSuites(
+  Iterable<String> lines, {
+  required String testDir,
+  required Iterable<String> suites,
+}) {
+  final Map<int, String> paths = <int, String>{};
+  final Map<int, int> declared = <int, int>{};
+  final Map<int, int> finished = <int, int>{};
+  final Map<int, int> suiteOf = <int, int>{};
+  for (final String line in lines) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(line);
+    } on FormatException {
+      continue;
+    }
+    if (decoded is! Map<String, Object?>) continue;
+    final Map<String, Object?> e = decoded;
+    switch (e['type']) {
+      case 'suite':
+        final Map<String, Object?> s = e['suite']! as Map<String, Object?>;
+        paths[s['id']! as int] = p
+            .split(
+              p.relative(p.absolute(s['path'] as String? ?? ''), from: testDir),
+            )
+            .join('/');
+      case 'group':
+        final Map<String, Object?> g = e['group']! as Map<String, Object?>;
+        if (g['parentID'] == null) {
+          declared[g['suiteID']! as int] = g['testCount']! as int;
+        }
+      case 'testStart':
+        final Map<String, Object?> t = e['test']! as Map<String, Object?>;
+        suiteOf[t['id']! as int] = t['suiteID']! as int;
+      case 'testDone' when e['hidden'] != true:
+        if (suiteOf[e['testID']! as int] case final int suite) {
+          finished.update(suite, (int n) => n + 1, ifAbsent: () => 1);
+        }
+    }
+  }
+  final Set<String> complete = <String>{
+    for (final MapEntry<int, int> d in declared.entries)
+      if ((finished[d.key] ?? 0) >= d.value) paths[d.key]!,
+  };
+  return <String>{
+    for (final String s in suites)
+      if (!complete.contains(s)) s,
+  };
+}
+
 /// Bundled files whose shard verdict can't be trusted: they failed, or their
 /// shard never loaded. A neighbor's leaked global state can cause either, so
 /// they get a standalone rerun whose verdict wins.

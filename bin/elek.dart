@@ -1,6 +1,7 @@
 // Bundled test runner with a local green-hash cache. Run from a package dir;
 // flags in RunnerOptions.parse. A file is skipped when the hash of its import
 // closure + salt already passed.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -59,6 +60,15 @@ Future<void> main(List<String> args) async {
 
   final File durationsFile = File(p.join(store, 'durations.json'));
   final Map<String, int> durations = _readDurations(durationsFile);
+  // Leftover shards would be picked up by analyze and the IDE.
+  final StreamSubscription<ProcessSignal> interrupt = ProcessSignal.sigint
+      .watch()
+      .listen((_) {
+        // A signal sent to elek alone (an agent's timeout) misses the child.
+        _running?.kill();
+        _deleteDir(bundleDir);
+        exit(130);
+      });
   final (
     List<String> targets,
     Map<String, List<String>> shards,
@@ -72,14 +82,17 @@ Future<void> main(List<String> args) async {
   );
 
   final File resultsFile = File(p.join(workDir, 'results.json'));
-  // 79 = "no tests ran": the cache can leave only files without tests to run.
-  // Without skipped files it means a filter matched nothing; keep it.
-  int code = switch (await _test(flutter, o.testArgs, targets, resultsFile)) {
-    79 when toRun.length < tests.length => 0,
-    final int c => c,
-  };
-  if (Directory(bundleDir).existsSync()) {
-    Directory(bundleDir).deleteSync(recursive: true);
+  int code;
+  try {
+    // 79 = "no tests ran": the cache can leave only files without tests to
+    // run. Without skipped files it means a filter matched nothing; keep it.
+    code = switch (await _test(flutter, o.testArgs, targets, resultsFile)) {
+      79 when toRun.length < tests.length => 0,
+      final int c => c,
+    };
+  } finally {
+    _deleteDir(bundleDir);
+    await interrupt.cancel();
   }
   final List<String> lines = resultsFile.existsSync()
       ? resultsFile.readAsLinesSync()
@@ -99,7 +112,16 @@ Future<void> main(List<String> args) async {
             (MapEntry<String, FileResult> e) =>
                 !e.value.passed && !rerun.contains(e.key),
           ) ||
-          unloaded.any((String s) => !shards.containsKey(s)),
+          unloaded.any((String s) => !shards.containsKey(s)) ||
+          // --fail-fast or a crash: tests that never ran can't be vouched for.
+          unfinishedSuites(
+            lines,
+            testDir: testDir,
+            suites: <String>[
+              for (final String t in targets)
+                p.split(p.relative(t, from: testDir)).join('/'),
+            ],
+          ).any((String s) => !unloaded.contains(s)),
       flutter: flutter,
       testArgs: o.testArgs,
       testDir: testDir,
@@ -143,6 +165,8 @@ Future<void> main(List<String> args) async {
 List<String> _linesOf(File f) =>
     f.existsSync() ? f.readAsLinesSync() : const <String>[];
 
+Process? _running;
+
 /// Runs the test command on [targets], writing JSON results to [results].
 Future<int> _test(
   bool flutter,
@@ -153,7 +177,7 @@ Future<int> _test(
   // A stale file would be read as this run's results if flutter dies early.
   if (results.existsSync()) results.deleteSync();
   final Process runner = await Process.start(
-    flutter ? 'flutter' : 'dart',
+    flutter ? _flutterBinary() : _dartBinary(),
     <String>[
       'test',
       if (flutter) '--no-pub',
@@ -165,12 +189,15 @@ Future<int> _test(
     mode: ProcessStartMode.inheritStdio,
     runInShell: Platform.isWindows,
   );
-  return runner.exitCode;
+  _running = runner;
+  final int code = await runner.exitCode;
+  _running = null;
+  return code;
 }
 
 /// Reruns [files] one suite each; their standalone verdicts replace the
 /// bundled ones in [results]. Returns the run's exit code: the rerun's, unless
-/// something outside [files] also failed.
+/// something outside [files] also failed or the main run didn't finish.
 Future<int> _rerunAlone(
   List<String> files,
   Map<String, FileResult> results, {
@@ -305,12 +332,31 @@ List<String> _filesAt(String path) => Directory(path).existsSync()
     : <String>[path];
 
 // `dart run` executes <flutter>/bin/cache/dart-sdk/bin/dart.
+String get _flutterCache =>
+    p.dirname(p.dirname(p.dirname(Platform.resolvedExecutable)));
+
 String? _flutterVersionFile() {
-  final String cache = p.dirname(
-    p.dirname(p.dirname(Platform.resolvedExecutable)),
-  );
-  final File f = File(p.join(cache, 'flutter.version.json'));
+  final File f = File(p.join(_flutterCache, 'flutter.version.json'));
   return f.existsSync() ? f.path : null;
+}
+
+// The SDK running elek is the one hashed, so it is also the one that tests.
+String _flutterBinary() {
+  final String bin = p.join(
+    p.dirname(_flutterCache),
+    Platform.isWindows ? 'flutter.bat' : 'flutter',
+  );
+  return File(bin).existsSync() ? bin : 'flutter';
+}
+
+// A compiled elek would be its own resolvedExecutable; only reuse a real dart.
+String _dartBinary() =>
+    p.basenameWithoutExtension(Platform.resolvedExecutable) == 'dart'
+    ? Platform.resolvedExecutable
+    : 'dart';
+
+void _deleteDir(String path) {
+  if (Directory(path).existsSync()) Directory(path).deleteSync(recursive: true);
 }
 
 /// Host facts tests can observe without importing them. The time zone offset
@@ -327,7 +373,7 @@ String _environment(bool flutter) {
 }
 
 String _flutterRevision() {
-  final ProcessResult r = Process.runSync('flutter', <String>[
+  final ProcessResult r = Process.runSync(_flutterBinary(), <String>[
     '--version',
     '--machine',
   ], runInShell: Platform.isWindows);
