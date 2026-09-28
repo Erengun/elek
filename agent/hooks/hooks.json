@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dart \"${CLAUDE_PLUGIN_ROOT}/hooks/elek_hook.dart\" mark",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dart \"${CLAUDE_PLUGIN_ROOT}/hooks/elek_hook.dart\" verify",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

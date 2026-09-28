@@ -1,0 +1,8 @@
+{
+  "name": "elek",
+  "version": "0.1.0",
+  "description": "Verify Dart and Flutter changes with elek before the agent stops.",
+  "author": { "name": "Eren Gun" },
+  "repository": "https://github.com/Erengun/elek",
+  "keywords": ["dart", "flutter", "testing"]
+}

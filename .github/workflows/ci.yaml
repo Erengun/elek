@@ -47,6 +47,30 @@ jobs:
       - run: dart run elek --cache
       - name: Second run skips everything
         run: dart run elek --cache | tee out.txt && grep -q '^0/6 test files to run' out.txt
+      - name: Agent hook end to end
+        env:
+          CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/hook
+        run: |
+          hook() { dart ../agent/hooks/elek_hook.dart "$@"; }
+          edit='{"session_id":"ci","cwd":"'"$PWD"'","tool_name":"Edit","tool_input":{"file_path":"'"$PWD"'/test/cart_test.dart"}}'
+          stop='{"session_id":"ci","cwd":"'"$PWD"'","hook_event_name":"Stop","stop_hook_active":false}'
+          echo "$edit" | hook mark
+          echo "$stop" | hook verify | tee out.json && grep -q '"systemMessage":"elek: passed' out.json
+          # Backup outside test/: any file there is test data and reruns everything.
+          cp test/cart_test.dart "$CLAUDE_PLUGIN_DATA/cart_test.dart"
+          sed "s/'12,50 ₺'/'99,00 ₺'/" "$CLAUDE_PLUGIN_DATA/cart_test.dart" > test/cart_test.dart
+          echo "$edit" | hook mark
+          for i in 1 2; do
+            echo "$stop" | hook verify | tee out.json
+            grep -q '"decision":"block"' out.json
+            grep -q '1/6 test files to run' out.json
+            grep -q 'test/cart_test.dart :: label formats the total' out.json
+          done
+          echo "$stop" | hook verify | tee out.json && grep -q 'still fails after 3 attempts' out.json
+          cp "$CLAUDE_PLUGIN_DATA/cart_test.dart" test/cart_test.dart
+          patch='{"session_id":"ci","cwd":"'"$PWD"'","tool_name":"apply_patch","tool_input":{"command":"*** Begin Patch\n*** Update File: test/cart_test.dart\n*** End Patch"}}'
+          echo "$patch" | hook mark
+          echo "$stop" | hook verify | tee out.json && grep -q '"systemMessage":"elek: passed' out.json
       - name: A change in a path dependency outside the package reruns its test
         env:
           EXT: ${{ runner.temp }}/ext

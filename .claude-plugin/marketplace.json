@@ -1,0 +1,16 @@
+{
+  "name": "elek",
+  "owner": {
+    "name": "Eren Gun"
+  },
+  "metadata": {
+    "description": "Agent plugin for elek, the incremental test runner for Dart and Flutter."
+  },
+  "plugins": [
+    {
+      "name": "elek",
+      "source": "./agent",
+      "description": "Verify Dart and Flutter changes with elek before the agent stops."
+    }
+  ]
+}

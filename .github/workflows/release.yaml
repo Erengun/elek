@@ -18,6 +18,10 @@ jobs:
           version=$(sed -n 's/^version: //p' pubspec.yaml)
           test "v$version" = "$GITHUB_REF_NAME" || {
             echo "tag $GITHUB_REF_NAME != pubspec version $version"; exit 1; }
+          for manifest in agent/.claude-plugin/plugin.json agent/plugin.json; do
+            test "$(jq -r .version "$manifest")" = "$version" || {
+              echo "$manifest version != $version"; exit 1; }
+          done
       - run: dart pub get
       - run: dart analyze --fatal-infos
       - run: dart test

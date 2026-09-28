@@ -10,7 +10,8 @@
 
 Elek is an incremental test runner for Dart and Flutter. *Elek* means sieve
 in Turkish: it sifts out the tests that are already green and runs only what
-may have changed.
+may have changed. With the agent plugin, Elek checks your agent's changes
+before it says it's done.
 
 Elek fingerprints the inputs of each test file and skips the files that
 passed last time with the same inputs. Whatever is left runs in a few bundled
@@ -89,6 +90,43 @@ Only one Elek run at a time can work in a package, because runs share
 `test/.bundle/` and the results files. A second run exits with
 `Another elek run is already active in this package.`, so agents that run
 shell commands in parallel should wait and retry.
+
+### Agent plugin
+
+The repo also ships a plugin for Claude Code and Codex. It adds a skill that
+tells the agent how to verify with Elek, and two hooks:
+
+- After each file edit, a hook records that the session changed something.
+  It doesn't run any tests.
+- When the agent tries to finish, a hook runs `dart run elek --cache` once in
+  every package of the project that has Elek as a dev dependency. If a test
+  fails, the agent gets the failing tests and their messages and keeps working.
+  If it passes, you see a one-line `elek: passed` message.
+
+Turns without edits cost nothing. The hook stops the agent from finishing at
+most 3 times in a row, so a test that was already failing can't trap it in a
+loop. Edits made through the shell (`sed`, code generation) don't mark the
+session as changed; the skill tells the agent to run Elek itself after those.
+The hook needs `dart` on your `PATH`.
+
+Claude Code:
+
+```sh
+/plugin marketplace add Erengun/elek
+/plugin install elek@elek
+```
+
+Codex:
+
+```sh
+codex plugin marketplace add Erengun/elek
+codex plugin add elek@elek
+```
+
+Codex doesn't run plugin hooks until you trust them in `/hooks`. Claude Code
+runs them once the plugin is enabled and lists them in `/hooks`. The hook
+source is `agent/hooks/elek_hook.dart`, if you want to read what it does
+first.
 
 ## How it works
 

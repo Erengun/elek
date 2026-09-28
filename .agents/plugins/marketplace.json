@@ -1,0 +1,10 @@
+{
+  "name": "elek",
+  "plugins": [
+    {
+      "name": "elek",
+      "source": { "source": "local", "path": "./agent" },
+      "description": "Verify Dart and Flutter changes with elek before the agent stops."
+    }
+  ]
+}
