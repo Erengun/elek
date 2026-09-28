@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://pub.dev/packages/elek"><img src="https://img.shields.io/pub/v/elek.svg" alt="pub.dev"></a>
   <a href="https://github.com/Erengun/elek/actions/workflows/ci.yaml"><img src="https://github.com/Erengun/elek/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
 </p>
 
@@ -36,7 +37,8 @@ before you rely on it.
 
 ## Install
 
-Add Elek as a dev dependency:
+Elek is on [pub.dev](https://pub.dev/packages/elek). Add it as a dev
+dependency:
 
 ```sh
 dart pub add dev:elek
