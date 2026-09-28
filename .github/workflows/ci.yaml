@@ -47,10 +47,30 @@ jobs:
       - run: dart run elek --cache
       - name: Second run skips everything
         run: dart run elek --cache | tee out.txt && grep -q '^0/6 test files to run' out.txt
+      - name: A change in a path dependency outside the package reruns its test
+        env:
+          EXT: ${{ runner.temp }}/ext
+        run: |
+          mkdir -p "$EXT/lib"
+          printf 'name: ext\nenvironment: {sdk: ^3.8.0}\n' > "$EXT/pubspec.yaml"
+          echo 'int answer() => 42;' > "$EXT/lib/ext.dart"
+          dart pub add "ext:{\"path\":\"$EXT\"}"
+          printf "import 'package:ext/ext.dart';\nimport 'package:test/test.dart';\n\nvoid main() => test('ext', () => expect(answer(), 42));\n" > test/ext_test.dart
+          dart run elek --cache
+          echo 'int answer() => 41;' > "$EXT/lib/ext.dart"
+          ! dart run elek --cache | tee out.txt
+          grep -q '^1/7 test files to run' out.txt
 
   flutter:
-    name: Flutter end to end
-    runs-on: ubuntu-latest
+    name: Flutter end to end / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:

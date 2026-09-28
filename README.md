@@ -6,19 +6,22 @@
   <a href="https://github.com/Erengun/elek/actions/workflows/ci.yaml"><img src="https://github.com/Erengun/elek/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
 </p>
 
-**Fast test loops for Flutter developers and coding agents.**
-*Elek* is Turkish for sieve.
+**Your coding agent is fast. Your test suite isn't.**
+
+Elek is an incremental test runner for Dart and Flutter. *Elek* means sieve
+in Turkish: it sifts out the tests that are already green and runs only what
+may have changed.
 
 Elek fingerprints the inputs of each test file and skips the files that
 passed last time with the same inputs. Whatever is left runs in a few bundled
 shards, balanced by how long each file took before, so the compiler starts a
 handful of times instead of once per file.
 
-| One edit, then verify (265 files, 2230 tests) | `flutter test` | elek |
-|---|---:|---:|
-| A test file changed | 192.5 s | 3.9 s |
-| A controller changed (17 dependent files) | 192.5 s | 16.1 s |
-| Nothing changed | 192.5 s | 1.8 s |
+| Local verification loop (265 files, 2230 tests) | `flutter test` | elek | speedup |
+|---|---:|---:|---:|
+| A test file changed | 192.5 s | 3.9 s | 49× |
+| A controller changed (17 dependent files) | 192.5 s | 16.1 s | 12× |
+| Nothing changed | 192.5 s | 1.8 s | 107× |
 
 ```
 fingerprint each test file ─► skip the ones already green ─► bundle the rest
@@ -37,7 +40,9 @@ Elek isn't on pub.dev yet. Add it as a dev dependency from git:
 ```yaml
 dev_dependencies:
   elek:
-    git: https://github.com/Erengun/elek
+    git:
+      url: https://github.com/Erengun/elek
+      ref: v0.1.0
 ```
 
 ## Usage
@@ -59,9 +64,9 @@ calls `dart test`.
 ## For coding agents
 
 Any agent that can run a shell command can use Elek, including Claude Code,
-Codex, Cursor and Copilot. You don't need to set anything up. Elek prints the
-usual `flutter test` or `dart test` output and exits non-zero when a test
-fails. Put something like this in `CLAUDE.md` or `AGENTS.md`:
+Codex, Cursor and Copilot. No agent-specific integration is required. Elek
+prints the usual `flutter test` or `dart test` output and exits non-zero when
+a test fails. Put something like this in `CLAUDE.md` or `AGENTS.md`:
 
 ```markdown
 ## Tests
@@ -80,14 +85,21 @@ Cloud agents and agents running in GitHub Actions often have `CI` set, and
 Elek turns its cache off when it sees `CI`. Add `--cache` there if you still
 want green files skipped.
 
+Only one Elek run at a time can work in a package, because runs share
+`test/.bundle/` and the results files. A second run exits with
+`Another elek run is already active in this package.`, so agents that run
+shell commands in parallel should wait and retry.
+
 ## How it works
 
 A test file's fingerprint covers its transitive `import`, `export` and `part`
-closure (both branches of a conditional directive count), every non-Dart file
+closure (both branches of a conditional directive count), including `path:`
+dependencies that live outside the workspace, every non-Dart file
 under `test/` such as fixtures and goldens, its nearest
 `flutter_test_config.dart`, `pubspec.yaml`, the workspace `pubspec.lock`,
 declared assets, `l10n.yaml`, `dart_test.yaml`, the Dart and Flutter versions,
-the locale and the time zone.
+the locale and the time zone. Hosted and git dependencies aren't walked:
+the lockfile pins them, so a new version changes `pubspec.lock` instead.
 
 When a file passes, Elek stores its fingerprint. If the fingerprint is the same
 on the next run, Elek skips the file. It never stores failures, load errors, or
