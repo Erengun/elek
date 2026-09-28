@@ -170,7 +170,8 @@ Future<HookResult> verify(
       continue;
     }
     if (s.attempts + 1 >= maxAttempts) {
-      writeState(state, dirty: true, attempts: 0);
+      // Stay quiet until the next edit, so known-red tests don't block every turn.
+      writeState(state, dirty: false, attempts: 0);
       return _message(
         'elek: $pkg still fails after $maxAttempts attempts; letting the '
         'agent stop. Run `dart run elek` in $pkg to see the failures.',

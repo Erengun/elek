@@ -1,0 +1,7 @@
+{
+  "name": "elek",
+  "version": "0.1.0",
+  "description": "Verify Dart and Flutter changes with elek before the agent stops.",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}

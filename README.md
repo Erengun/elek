@@ -104,8 +104,8 @@ tells the agent how to verify with Elek, and two hooks:
   If it passes, you see a one-line `elek: passed` message.
 
 Turns without edits cost nothing. The hook stops the agent from finishing at
-most 3 times in a row, so a test that was already failing can't trap it in a
-loop. Edits made through the shell (`sed`, code generation) don't mark the
+most 3 times in a row. After that it stays quiet until the agent edits a file
+again, so a test that was already failing can't trap it in a loop. Edits made through the shell (`sed`, code generation) don't mark the
 session as changed; the skill tells the agent to run Elek itself after those.
 The hook needs `dart` on your `PATH`.
 

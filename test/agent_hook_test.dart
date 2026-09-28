@@ -176,7 +176,7 @@ void main() {
           (jsonDecode(last.stdout!) as Map<String, Object?>)['systemMessage'],
           contains('still fails'),
         );
-        expect(readState(state), (dirty: true, attempts: 0));
+        expect(readState(state), (dirty: false, attempts: 0));
       },
     );
 
