@@ -30,20 +30,16 @@ fingerprint each test file ─► skip the ones already green ─► bundle the 
  + pubspec/lock + SDK)                                        by past durations
 ```
 
-Elek is at 0.1.0 and experimental. It has been measured on the two projects
+Elek is at 0.1 and experimental. It has been measured on the two projects
 below. On any other project, compare its results with plain `flutter test`
 before you rely on it.
 
 ## Install
 
-Elek isn't on pub.dev yet. Add it as a dev dependency from git:
+Add Elek as a dev dependency:
 
-```yaml
-dev_dependencies:
-  elek:
-    git:
-      url: https://github.com/Erengun/elek
-      ref: v0.1.0
+```sh
+dart pub add dev:elek
 ```
 
 ## Usage

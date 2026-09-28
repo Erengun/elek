@@ -1,3 +1,7 @@
+## 0.1.1
+
+- First release on pub.dev, under the MIT license. No code changes from 0.1.0.
+
 ## 0.1.0
 
 - Initial release: incremental test runner for Dart and Flutter packages.
