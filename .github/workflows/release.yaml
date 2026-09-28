@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+      - name: Tag matches pubspec version
+        run: |
+          version=$(sed -n 's/^version: //p' pubspec.yaml)
+          test "v$version" = "$GITHUB_REF_NAME" || {
+            echo "tag $GITHUB_REF_NAME != pubspec version $version"; exit 1; }
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+      - run: dart test
+      - name: Release notes from CHANGELOG
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" \
+            '$0 == "## " v {f=1; next} /^## /{f=0} f' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "no CHANGELOG entry for $GITHUB_REF_NAME"; exit 1; }
+      - run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dart:
+    name: Dart ${{ matrix.sdk }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        sdk: [stable]
+        include:
+          # Lower bound of the pubspec SDK constraint.
+          - os: ubuntu-latest
+            sdk: 3.8.0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.sdk }}
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+        if: matrix.sdk == 'stable' && matrix.os == 'ubuntu-latest'
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
+  example:
+    name: Example end to end
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: example
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+      # CI turns the cache off; --cache opts back in so the second run is checked.
+      - run: dart run elek --cache
+      - name: Second run skips everything
+        run: dart run elek --cache | tee out.txt && grep -q '^0/6 test files to run' out.txt
+
+  flutter:
+    name: Flutter end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: elek
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Create a Flutter app with enough tests to bundle
+        run: |
+          flutter create --no-pub app
+          cd app
+          for i in 1 2 3 4 5; do cp test/widget_test.dart test/widget_${i}_test.dart; done
+          flutter pub add --dev 'elek:{"path":"../elek"}'
+      - name: Bundled run
+        working-directory: app
+        run: dart run elek --cache | tee out.txt && grep -q '^6/6 test files to run' out.txt
+      - name: Second run skips everything
+        working-directory: app
+        run: dart run elek --cache | tee out.txt && grep -q '^0/6 test files to run' out.txt

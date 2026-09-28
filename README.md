@@ -1,10 +1,24 @@
-# elek
+<p align="center">
+  <img src="doc/banner.jpg" alt="elek" width="100%">
+</p>
 
-Incremental test runner for Dart and Flutter.
+<p align="center">
+  <a href="https://github.com/Erengun/elek/actions/workflows/ci.yaml"><img src="https://github.com/Erengun/elek/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+</p>
 
-Elek skips test files that already passed with exactly the same inputs, then
-runs the rest in a few bundled, duration-balanced shards so the compiler is
-paid a few times instead of once per file.
+**Fast test loops for Flutter developers and coding agents.**
+*Elek* is Turkish for sieve.
+
+Stop rerunning tests that already passed. Elek fingerprints each test file's
+inputs, skips the ones that are still green, and runs the rest in a few
+bundled, duration-balanced shards, so the compiler runs a few times instead of
+once per file.
+
+| One edit, then verify (265 files, 2230 tests) | `flutter test` | elek |
+|---|---:|---:|
+| A test file changed | 192.5 s | 3.9 s |
+| A controller changed (17 dependent files) | 192.5 s | 16.1 s |
+| Nothing changed | 192.5 s | 1.8 s |
 
 ```
 fingerprint each test file ─► skip the ones already green ─► bundle the rest
@@ -14,6 +28,16 @@ fingerprint each test file ─► skip the ones already green ─► bundle the 
 
 Status: experimental 0.1.0. Measured on the two projects below; treat anything
 else as unverified until you've compared it with plain `flutter test`.
+
+## Install
+
+Not on pub.dev yet. Add it as a dev dependency from git:
+
+```yaml
+dev_dependencies:
+  elek:
+    git: https://github.com/Erengun/elek
+```
 
 ## Usage
 
@@ -29,6 +53,29 @@ dart run elek -- --name login # pass arguments to flutter/dart test
 ```
 
 Flutter packages run `flutter test --no-pub`, others `dart test`.
+
+## For coding agents
+
+Claude Code, Codex, Cursor, Copilot and any other agent that can run a shell
+command can use Elek; there is no integration to set up. It prints the usual
+`flutter test` / `dart test` output and exits non-zero when a test fails. Put
+this in `CLAUDE.md` or `AGENTS.md`:
+
+```markdown
+## Tests
+
+After a code change, verify with `dart run elek` instead of `flutter test`:
+it runs only the test files whose inputs changed.
+
+Before finishing a large or risky change, run `dart run elek --no-cache`
+to run every test.
+
+To run a subset, pass test arguments after `--`, e.g.
+`dart run elek -- --name login`. That disables the cache for the run.
+```
+
+If the agent's environment sets `CI` (common in cloud and Actions-based
+agents), the cache is off; add `--cache` to keep skipping green files.
 
 ## How it works
 
