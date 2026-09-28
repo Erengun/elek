@@ -123,4 +123,66 @@ import 'stub.dart'
       );
     });
   });
+
+  group('pathPackages', () {
+    test('returns the packages the lockfile resolved from a path', () {
+      const String lock = '''
+packages:
+  args:
+    dependency: transitive
+    description:
+      name: args
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.7.0"
+  flutter:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
+  shared:
+    dependency: "direct main"
+    description:
+      path: "../shared"
+      relative: true
+    source: path
+    version: "0.0.0"
+sdks:
+  dart: ">=3.8.0 <4.0.0"
+''';
+
+      expect(pathPackages(lock), <String>{'shared'});
+    });
+  });
+
+  group('readPackageRoots', () {
+    late Directory root;
+
+    setUp(() => root = Directory.systemTemp.createTempSync('roots_test'));
+    tearDown(() => root.deleteSync(recursive: true));
+
+    test('keeps workspace packages and named path packages outside it', () {
+      final File config =
+          File(p.join(root.path, 'ws', '.dart_tool', 'package_config.json'))
+            ..createSync(recursive: true)
+            ..writeAsStringSync('''
+{"configVersion": 2, "packages": [
+  {"name": "app", "rootUri": "../app", "packageUri": "lib/"},
+  {"name": "shared", "rootUri": "../../shared", "packageUri": "lib/"},
+  {"name": "args", "rootUri": "../../cache/args", "packageUri": "lib/"}
+]}''');
+
+      expect(
+        readPackageRoots(
+          config,
+          within: p.join(root.path, 'ws'),
+          pathPackages: <String>{'shared'},
+        ),
+        <String, String>{
+          'app': p.join(root.path, 'ws', 'app', 'lib'),
+          'shared': p.join(root.path, 'shared', 'lib'),
+        },
+      );
+    });
+  });
 }

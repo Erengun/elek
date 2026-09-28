@@ -9,6 +9,7 @@ import 'package:elek/src/hash.dart';
 import 'package:elek/src/options.dart';
 import 'package:elek/src/pubspec.dart';
 import 'package:elek/src/results.dart';
+import 'package:elek/src/run_lock.dart';
 import 'package:elek/src/test_dir.dart';
 import 'package:path/path.dart' as p;
 
@@ -48,6 +49,13 @@ Future<void> main(List<String> args) async {
   }
   if (toRun.isEmpty) return;
 
+  Directory(workDir).createSync(recursive: true);
+  // Runs share test/.bundle and the results files; the lock lives until exit.
+  if (tryRunLock(p.join(workDir, 'run.lock')) == null) {
+    stderr.writeln('Another elek run is already active in this package.');
+    exit(1);
+  }
+
   final File durationsFile = File(p.join(store, 'durations.json'));
   final Map<String, int> durations = _readDurations(durationsFile);
   final (
@@ -62,7 +70,6 @@ Future<void> main(List<String> args) async {
     weight: (String f) => durations[f] ?? File(p.join(testDir, f)).lengthSync(),
   );
 
-  Directory(workDir).createSync(recursive: true);
   final File resultsFile = File(p.join(workDir, 'results.json'));
   // 79 = "no tests ran": the cache can leave only files without tests to run.
   // Without skipped files it means a filter matched nothing; keep it.
@@ -201,7 +208,14 @@ Map<String, String> _hashAll(
 ) {
   final File config = _findPackageConfig(pkgDir);
   final String workspace = p.dirname(p.dirname(config.path));
-  final Map<String, String> roots = readPackageRoots(config, within: workspace);
+  final File lock = File(p.join(workspace, 'pubspec.lock'));
+  final Map<String, String> roots = readPackageRoots(
+    config,
+    within: workspace,
+    pathPackages: lock.existsSync()
+        ? pathPackages(lock.readAsStringSync())
+        : const <String>{},
+  );
   final DartDeps deps = DartDeps(roots);
   final InputHasher hasher = InputHasher(workspace);
   // Salt .dart files (test config, this runner) bring their imports along.

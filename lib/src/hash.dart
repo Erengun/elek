@@ -63,9 +63,28 @@ final class DartDeps {
   }
 }
 
-/// Reads `.dart_tool/package_config.json`, keeping only packages whose
-/// sources live under [within] (the workspace).
-Map<String, String> readPackageRoots(File config, {required String within}) {
+/// Names of packages that [lockfile] resolved from a `path:` source. Their
+/// sources can change without the lockfile changing, unlike hosted or git ones.
+Set<String> pathPackages(String lockfile) {
+  final Set<String> names = <String>{};
+  String? current;
+  for (final String line in const LineSplitter().convert(lockfile)) {
+    if (RegExp(r'^  (\S+):\s*$').firstMatch(line) case final RegExpMatch m) {
+      current = m[1];
+    } else if (current != null && line.trim() == 'source: path') {
+      names.add(current);
+    }
+  }
+  return names;
+}
+
+/// Reads `.dart_tool/package_config.json`, keeping packages whose sources live
+/// under [within] (the workspace) plus [pathPackages] wherever they live.
+Map<String, String> readPackageRoots(
+  File config, {
+  required String within,
+  Set<String> pathPackages = const <String>{},
+}) {
   final Map<String, Object?> json =
       jsonDecode(config.readAsStringSync()) as Map<String, Object?>;
   final Uri base = config.absolute.uri;
@@ -76,7 +95,10 @@ Map<String, String> readPackageRoots(File config, {required String within}) {
     final String lib = p.normalize(
       root.resolve(pkg['packageUri'] as String? ?? 'lib/').toFilePath(),
     );
-    if (p.isWithin(within, lib)) roots[pkg['name']! as String] = lib;
+    final String name = pkg['name']! as String;
+    if (p.isWithin(within, lib) || pathPackages.contains(name)) {
+      roots[name] = lib;
+    }
   }
   return roots;
 }
