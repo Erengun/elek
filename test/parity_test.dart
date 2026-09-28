@@ -43,8 +43,8 @@ String _done(
   'time': 1,
 });
 
-String _error(int id) =>
-    _e(<String, Object?>{'type': 'error', 'testID': id, 'error': 'late'});
+String _error(int id, [String error = 'late']) =>
+    _e(<String, Object?>{'type': 'error', 'testID': id, 'error': error});
 
 void main() {
   test('plain and bundled runs of the same tests canonicalize equally', () {
@@ -130,5 +130,58 @@ void main() {
       ], testDir: _testDir),
       <String>['a_test.dart :: same  FAIL', 'a_test.dart :: same  PASS'],
     );
+  });
+
+  group('failedTests', () {
+    test('keeps each failure with its message, bundled or not', () {
+      final List<FailedTest> failures = failedTests(<String>[
+        _suite(0, '$_testDir/.bundle/shard_0.dart'),
+        _group(1, null),
+        _group(2, 'cart/cart_test.dart'),
+        _start(3, 0, 'cart/cart_test.dart adds item', <int>[1, 2]),
+        _error(3, 'Expected: <4>\n  Actual: <5>'),
+        _done(3, 'failure'),
+        _start(4, 0, 'cart/cart_test.dart passes', <int>[1, 2]),
+        _done(4, 'success'),
+      ], testDir: _testDir);
+
+      expect(failures, hasLength(1));
+      expect(failures.single.file, 'cart/cart_test.dart');
+      expect(failures.single.name, 'adds item');
+      expect(failures.single.message, 'Expected: <4>\n  Actual: <5>');
+    });
+
+    test('reports a suite that failed to load', () {
+      final List<FailedTest> failures = failedTests(<String>[
+        _suite(0, '$_testDir/a_test.dart'),
+        _start(1, 0, 'loading $_testDir/a_test.dart', <int>[]),
+        _error(1, "a_test.dart:3:7: Error: Undefined name 'x'."),
+        _done(1, 'error', hidden: true),
+      ], testDir: _testDir);
+
+      expect(failures.single.file, 'a_test.dart');
+      expect(failures.single.name, 'failed to load');
+      expect(failures.single.message, contains("Undefined name 'x'"));
+    });
+  });
+
+  group('formatFailures', () {
+    test('lists file and test, and cuts long messages', () {
+      final String out = formatFailures(<FailedTest>[
+        (
+          file: 'a_test.dart',
+          name: 'works',
+          message: List<String>.generate(20, (int i) => 'line $i').join('\n'),
+        ),
+      ]);
+
+      expect(
+        out,
+        startsWith('elek: 1 failing test\n  test/a_test.dart :: works\n'),
+      );
+      expect(out, contains('    line 0\n'));
+      expect(out, isNot(contains('line 19')));
+      expect(out, contains('    ...'));
+    });
   });
 }

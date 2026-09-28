@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:elek/src/bundle.dart';
 import 'package:elek/src/hash.dart';
 import 'package:elek/src/options.dart';
+import 'package:elek/src/parity.dart';
 import 'package:elek/src/pubspec.dart';
 import 'package:elek/src/results.dart';
 import 'package:elek/src/run_lock.dart';
@@ -121,8 +122,26 @@ Future<void> main(List<String> args) async {
       loadedAll: code == 0,
     );
   }
+  if (code != 0) {
+    // Rerun files (and their shards' load errors) report from the alone run.
+    final List<FailedTest> failures = <FailedTest>[
+      for (final FailedTest f in failedTests(lines, testDir: testDir))
+        if (!rerun.contains(f.file) &&
+            !(rerun.isNotEmpty && f.file.startsWith('.bundle/')))
+          f,
+      if (rerun.isNotEmpty)
+        ...failedTests(
+          _linesOf(File(p.join(workDir, 'results_rerun.json'))),
+          testDir: testDir,
+        ),
+    ];
+    if (failures.isNotEmpty) stdout.write('\n${formatFailures(failures)}');
+  }
   exit(code);
 }
+
+List<String> _linesOf(File f) =>
+    f.existsSync() ? f.readAsLinesSync() : const <String>[];
 
 /// Runs the test command on [targets], writing JSON results to [results].
 Future<int> _test(
