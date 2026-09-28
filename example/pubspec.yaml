@@ -3,7 +3,7 @@ description: A tiny package to try elek on.
 publish_to: none
 
 environment:
-  sdk: ^3.12.0
+  sdk: ^3.8.0
 
 dev_dependencies:
   elek:

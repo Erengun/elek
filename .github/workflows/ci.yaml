@@ -63,7 +63,7 @@ jobs:
           flutter create --no-pub app
           cd app
           for i in 1 2 3 4 5; do cp test/widget_test.dart test/widget_${i}_test.dart; done
-          flutter pub add --dev 'elek:{"path":"../elek"}'
+          flutter pub add 'dev:elek:{"path":"../elek"}'
       - name: Bundled run
         working-directory: app
         run: dart run elek --cache | tee out.txt && grep -q '^6/6 test files to run' out.txt

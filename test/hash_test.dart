@@ -39,7 +39,7 @@ import 'stub.dart'
       final File f = File(p.join(root.path, rel))
         ..createSync(recursive: true)
         ..writeAsStringSync(content);
-      return f.path;
+      return p.normalize(f.path);
     }
 
     test('follows package, relative and part directives transitively', () {

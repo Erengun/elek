@@ -14,7 +14,7 @@ void main() {
     final File f = File(p.join(testDir.path, rel))
       ..createSync(recursive: true)
       ..writeAsStringSync(rel);
-    return f.path;
+    return p.normalize(f.path);
   }
 
   test('testDataFiles lists visible non-Dart files outside the bundle dir', () {

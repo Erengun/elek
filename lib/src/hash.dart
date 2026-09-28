@@ -42,7 +42,11 @@ final class DartDeps {
       final String rest = uri.substring('package:'.length);
       final int slash = rest.indexOf('/');
       final String? root = packageRoots[rest.substring(0, slash)];
-      return root == null ? null : p.join(root, rest.substring(slash + 1));
+      // `package:a/src/b.dart` keeps its `/` otherwise; on Windows the same file
+      // would then be a different closure entry than its relative import.
+      return root == null
+          ? null
+          : p.normalize(p.join(root, rest.substring(slash + 1)));
     }
     return p.normalize(p.join(p.dirname(from), uri));
   }
